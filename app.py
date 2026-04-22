@@ -9,17 +9,22 @@ def home():
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    data = request.json
-    print("Received:", data)
+    try:
+        data = request.get_json(force=True)
+        print("Received:", data)
 
-    action = data.get("action")
+        action = data.get("action")
 
-    if action == "buy":
-        print("BUY signal received")
-    elif action == "sell":
-        print("SELL signal received")
+        if action == "buy":
+            print("BUY signal received")
+        elif action == "sell":
+            print("SELL signal received")
 
-    return {"status": "ok"}
+    except Exception as e:
+        print("Error:", e)
+
+    # 🔥 ALWAYS return fast response
+    return "ok", 200
 
 
 if __name__ == "__main__":
