@@ -16,8 +16,8 @@ logging.basicConfig(
 print("BOT STARTED")
 
 # 🔐 Binance TESTNET keys
-API_KEY = "YOUR_API_KEY"
-API_SECRET = "YOUR_SECRET_KEY"
+API_KEY = os.environ.get("API_KEY")
+API_SECRET = os.environ.get("API_SECRET")
 
 client = Client(API_KEY, API_SECRET)
 client.API_URL = "https://testnet.binance.vision/api"
