@@ -1,14 +1,25 @@
 from flask import Flask, request
 import os
+import logging
+import sys
 from pybit.unified_trading import HTTP
 
 app = Flask(__name__)
 
-# Load API keys from Render environment
+# 🔥 Proper logging (important for Render)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
+logging.info("🚀 BOT STARTED")
+
+# 🔐 Load API keys
 api_key = os.environ.get("BYBIT_API_KEY")
 api_secret = os.environ.get("BYBIT_SECRET_KEY")
 
-# Connect to Bybit Testnet
+# 🔗 Connect to Bybit Testnet
 session = HTTP(
     testnet=True,
     api_key=api_key,
@@ -22,23 +33,24 @@ def home():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
-        # Get raw data first
-        raw_data = request.data
-        print("🔥 RAW BODY:", raw_data)
+        logging.info("🔥 Webhook hit")
 
-        # Try JSON parsing safely
+        raw_data = request.data
+        logging.info(f"RAW BODY: {raw_data}")
+
         data = request.get_json(silent=True)
-        print("📦 PARSED JSON:", data)
+        logging.info(f"JSON: {data}")
 
         if not data:
-            print("❌ No JSON received")
-            return "no json", 200
+            logging.info("❌ No JSON received")
+            return "ok", 200
 
         action = data.get("action")
-        print("👉 ACTION:", action)
+        logging.info(f"👉 ACTION: {action}")
 
         if action == "buy":
-            print("🚀 Placing BUY order")
+            logging.info("🚀 Placing BUY order")
+
             order = session.place_order(
                 category="linear",
                 symbol="BTCUSDT",
@@ -46,10 +58,12 @@ def webhook():
                 orderType="Market",
                 qty="0.001"
             )
-            print("✅ ORDER RESPONSE:", order)
+
+            logging.info(f"✅ ORDER RESPONSE: {order}")
 
         elif action == "sell":
-            print("🚀 Placing SELL order")
+            logging.info("🚀 Placing SELL order")
+
             order = session.place_order(
                 category="linear",
                 symbol="BTCUSDT",
@@ -57,13 +71,14 @@ def webhook():
                 orderType="Market",
                 qty="0.001"
             )
-            print("✅ ORDER RESPONSE:", order)
+
+            logging.info(f"✅ ORDER RESPONSE: {order}")
 
         else:
-            print("❌ Invalid or missing action")
+            logging.info("❌ Invalid action")
 
     except Exception as e:
-        print("❌ ERROR:", str(e))
+        logging.error(f"❌ ERROR: {str(e)}")
 
     return "ok", 200
 
