@@ -1,96 +1,104 @@
 from flask import Flask, request
-import os
 import logging
 import sys
-from pybit.unified_trading import HTTP
+import os
+from binance.client import Client
 
 app = Flask(__name__)
 
-# 🔥 Proper logging (works on all hosts)
+# Clean logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
+    format="%(message)s",
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 
-logging.info("🚀 BOT STARTED")
+print("BOT STARTED")
 
-# 🔐 Load API keys
-api_key = os.environ.get("BYBIT_API_KEY")
-api_secret = os.environ.get("BYBIT_SECRET_KEY")
+# 🔐 Binance TESTNET keys
+API_KEY = "YOUR_API_KEY"
+API_SECRET = "YOUR_SECRET_KEY"
 
-logging.info(f"🔑 API KEY LOADED: {bool(api_key)}")
+client = Client(API_KEY, API_SECRET)
+client.API_URL = "https://testnet.binance.vision/api"
 
-# 🔗 Connect to Bybit Testnet
-session = HTTP(
-    testnet=True,
-    api_key=api_key,
-    api_secret=api_secret
-)
+# Helper: get balance
+def get_balance(asset_name):
+    account = client.get_account()
+    for asset in account["balances"]:
+        if asset["asset"] == asset_name:
+            return float(asset["free"])
+    return 0.0
 
-@app.route('/')
+# Home
+@app.route("/")
 def home():
-    return "Bot is running"
+    return "Bot running"
 
-@app.route('/webhook', methods=['POST'])
+# ✅ Balance endpoint
+@app.route("/balance")
+def balance():
+    try:
+        usdt = get_balance("USDT")
+        btc = get_balance("BTC")
+        return f"USDT: {usdt} | BTC: {btc}"
+    except Exception as e:
+        return str(e)
+
+# ✅ Orders endpoint
+@app.route("/orders")
+def orders():
+    try:
+        orders = client.get_all_orders(symbol="BTCUSDT", limit=5)
+        return str(orders)
+    except Exception as e:
+        return str(e)
+
+# Webhook
+@app.route("/webhook", methods=["POST"])
 def webhook():
     try:
-        logging.info("🔥 Webhook hit")
-
-        raw_data = request.data
-        logging.info(f"RAW BODY: {raw_data}")
-
         data = request.get_json(silent=True)
-        logging.info(f"JSON: {data}")
 
         if not data:
-            logging.info("❌ No JSON received")
             return "ok", 200
 
         action = data.get("action")
-        logging.info(f"👉 ACTION: {action}")
+
+        before_usdt = get_balance("USDT")
+        before_btc = get_balance("BTC")
 
         if action == "buy":
-            logging.info("🚀 Placing BUY order")
-
-            try:
-                order = session.place_order(
-                    category="linear",
-                    symbol="BTCUSDT",
-                    side="Buy",
-                    orderType="Market",
-                    qty="0.001"
-                )
-                logging.info(f"✅ ORDER RESPONSE: {order}")
-
-            except Exception as e:
-                logging.error(f"❌ ORDER ERROR (BUY): {str(e)}")
+            print("BUY")
+            client.order_market_buy(
+                symbol="BTCUSDT",
+                quantity=0.0001
+            )
 
         elif action == "sell":
-            logging.info("🚀 Placing SELL order")
-
-            try:
-                order = session.place_order(
-                    category="linear",
-                    symbol="BTCUSDT",
-                    side="Sell",
-                    orderType="Market",
-                    qty="0.001"
-                )
-                logging.info(f"✅ ORDER RESPONSE: {order}")
-
-            except Exception as e:
-                logging.error(f"❌ ORDER ERROR (SELL): {str(e)}")
+            print("SELL")
+            client.order_market_sell(
+                symbol="BTCUSDT",
+                quantity=0.0001
+            )
 
         else:
-            logging.info("❌ Invalid action")
+            print("Invalid signal")
+            return "ok", 200
+
+        after_usdt = get_balance("USDT")
+        after_btc = get_balance("BTC")
+
+        print(f"USDT: {before_usdt} -> {after_usdt}")
+        print(f"BTC: {before_btc} -> {after_btc}")
+        print("-----")
 
     except Exception as e:
-        logging.error(f"❌ GENERAL ERROR: {str(e)}")
+        print(f"ERROR: {str(e)}")
 
     return "ok", 200
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+	app.run(host="0.0.0.0", port=port)
