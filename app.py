@@ -22,8 +22,17 @@ def home():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
-        data = request.get_json(force=True)
-        print("🔥 RAW DATA:", data)
+        # Get raw data first
+        raw_data = request.data
+        print("🔥 RAW BODY:", raw_data)
+
+        # Try JSON parsing safely
+        data = request.get_json(silent=True)
+        print("📦 PARSED JSON:", data)
+
+        if not data:
+            print("❌ No JSON received")
+            return "no json", 200
 
         action = data.get("action")
         print("👉 ACTION:", action)
@@ -51,7 +60,7 @@ def webhook():
             print("✅ ORDER RESPONSE:", order)
 
         else:
-            print("❌ Unknown action")
+            print("❌ Invalid or missing action")
 
     except Exception as e:
         print("❌ ERROR:", str(e))
